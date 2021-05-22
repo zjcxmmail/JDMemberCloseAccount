@@ -1,4 +1,5 @@
 Pillow~=8.2.0
-aiowebsocket~=1.0.0.dev2
 requests~=2.25.1
 selenium~=3.141.0
+websockets~=9.0.2
+baidu-aip==2.2.18.0
