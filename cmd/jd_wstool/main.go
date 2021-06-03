@@ -8,12 +8,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"time"
 )
 
 func main() {
-
 	err := Run()
 	if err != nil {
 		log.Fatal(err)
@@ -25,7 +23,12 @@ func Run() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("listening on %s://%s:%d\n", "http", getInterIP(), 5201)
+
+	info("注意事项：")
+	info("1. 手机端请求IP地址为如下监听地址，请先用电脑点击一下哪个可以访问通！")
+	info("2. 用手机浏览器测试访问说明1中尝试过的IP地址，如访问通代表无问题")
+	info("3. 以下IP获取到的IP仅做参考，如果全部访问不通，请检查防火墙开启5201端口或使用ipconfig/ifconfig查看本地其他IP")
+	getInterIP()
 
 	cs := NewChatServer()
 	s := &http.Server{
@@ -53,13 +56,31 @@ func Run() error {
 	return s.Shutdown(ctx)
 }
 
-func getInterIP() string {
-	inter, _ := net.InterfaceAddrs()
-	for i := range inter {
-		if strings.HasPrefix(inter[i].String(), "192.168") {
-			return strings.Split(inter[i].String(), "/")[0]
+func getInterIP() {
+	inter, err := net.InterfaceAddrs()
+	checkIfError(err)
+	i := 1
+	for _, addr := range inter {
+		if ipNet, ok := addr.(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
+			if ipNet.IP.To4() != nil {
+				fmt.Printf("监听地址%d： %s://%s:%d\n", i, "http", ipNet.IP.To4().String(), 5201)
+				i += 1
+			}
 		}
 	}
+}
 
-	return ""
+// info should be used to describe the example commands that are about to run.
+func info(format string, args ...interface{}) {
+	fmt.Printf("\033[1;36m%s\033[0m\n", fmt.Sprintf(format, args...))
+}
+
+// checkIfError should be used to naively panics if an error is not nil.
+func checkIfError(err error) {
+	if err == nil {
+		return
+	}
+
+	fmt.Printf("\x1b[31;1m%s\x1b[0m\n", fmt.Sprintf("error: %s", err))
+	os.Exit(1)
 }
