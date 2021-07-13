@@ -1,201 +1,355 @@
 # JDMemberCloseAccount
 
-学习python操作selenium的一个🌰，用来 全自动/半自动 退出加入的所有店铺会员
+## 介绍
 
-* 全自动：短信验证码全自动，图形验证码任选下面的一种，我测试图鉴比较好，又便宜又速度快
+本项目是我学习python操作selenium的一个🌰，也是一种京东自动退会方案，用来全自动退出京东加入的所有店铺会员
 
-  * 图形验证码用 [超级鹰打码](https://www.chaojiying.com/) ，费用是1块=1000积分，一次扣15积分
+## 声明
 
-  * 图形验证码用 [图鉴打码](https://www.ttshitu.com/) ，费用是1块=1积分，一次扣0.01积分
+1. 本项目仅限于学习研究selenium库的操作，以及一些python知识
 
-  * 图形验证码用 本地识别引擎，识别效率和精准度可能不会很高 [测试图最后一张](https://github.com/yqchilde/JDMemberCloseAccount#screenshots) (感谢 [@AntonVanke](https://github.com/AntonVanke) )的 PR，这下大家可以不用花钱了👍
-
-  * **当`cjy_validation` 和 `tj_validation` 都为false时，启动本地引擎识别**
-
-* 半自动：短信验证码全自动，图形验证码手动
-
-## 要求
+## 须知
 
 1. 有一定的电脑知识 or 有耐心爱折腾
-   
 2. chrome驱动(只在chrome测试了，故只留了chrome)
-   
 3. 操作系统(只在mac上测试了，非M1)
-   
-4. 关于手机短信验证码同步到浏览器中，本人采用了websocket来传递验证码
-   
-5. 关于如何在手机传递到浏览器，这点只说一下我的方式(达到目的即可)
-   
-   * 安卓端：利用tasker软件监听，一旦监听到就立即通过websocket推送过来
-   
-   * 安卓端：利用macrodroid软件监听，一旦监听到就立即通过websocket推送过来
-   
-   * 关于 `tasker` 和 `macrodroid` 配置均在 [extra](https://github.com/yqchilde/JDMemberCloseAccount/tree/main/extra) 目录下
-   
-   * ios端：首先感谢tg群的朋友[@millerchen](https://github.com/bluewatercg) 提供的思路，具体实现方案是电脑屏幕留出一个区域用来显示手机投屏的地方，然后打开短信列表，然后找个截图工具记一下当前需要识别的的左上角和右下角坐标(最好能暴露出完整短信)，再利用[百度ocr](https://cloud.baidu.com/product/ocr_general?track=navigation0904) 识别，识别到后获取结果并输入，百度ocr一个账号一天免费500次调用
-   
-   * <span style="color: red; "> 注意：百度OCR只是处理识别短信验证码并填入，不要误解为图形验证码也可以解决 </span>
-   
-   * 如果定位不准，看一下项目目录生成的`ios_code_pic.png`图片位置在当前屏幕的哪个位置，[识别效果gif](https://github.com/yqchilde/JDMemberCloseAccount#screenshots) 
-     此外，坐标和电脑分辨率有关，如果分辨是是1080P，那么qq截图识别的坐标就是刚好一比一的，比我的是4k显示器，是以百分之200显示的，那所有坐标就要乘以2了。
+4. 使用`python3.x`版本执行
+5. 有一定python基础知识，没有的话先去学一下，起码得会搭python环境
 
-## 安装方法
+## 思路
 
-1. 克隆到本地
+![项目思路](https://github.com/yqchilde/JDMemberCloseAccount/blob/main/screenshots/project_1.png)
 
-    ```shell
-    git clone https://github.com/yqchilde/JDMemberCloseAccount.git
-    ```
+1. 利用selenium打开退会页面
 
-2. 安装所需要的包
+2. 第一关：手机验证码
 
-    ```shell
-    pip3 install -r requirements.txt
-    ```
+    1. 安卓端（以下两种任选一个用就行）：
 
-3. 下载对应的浏览器驱动放到项目的`drivers`文件夹下面
-    * `chrome`请访问`chrome://version/`查看浏览器的版本，然后去 [chromedriver](http://chromedriver.storage.googleapis.com/index.html) 下载对应的版本/系统驱动
+        * 利用[macrodroid软件](https://wwa.lanzoui.com/iSwocpqow3a) 监听，一旦监听到就立即通过HTTP请求利用websocket推送过来，由`jd_wstool`
+          工具监听并送到selenium中填写
 
-4. 配置`config.json`
-
-    ```json
-    {
-        "device": "ios",
-        "baidu_app_id": "",
-        "baidu_api_key": "",
-        "baidu_secret_key": "",
-        "baidu_range": [1231,393,1383,412],
-        "baidu_delay_time": 5,
-        "browserType": "Chrome",
-        "headless": false,
-        "binary": "",
-        "cjy_validation": false,
-        "cjy_username": "",
-        "cjy_password": "",
-        "cjy_soft_id": "",
-        "cjy_kind": 9101,
-        "tj_validation": false,
-        "tj_username": "",
-        "tj_password": "",
-        "tj_type_id": 19,
-        "ws_conn_url": "ws://localhost:5201/subscribe",
-        "ws_timeout": 60,
-        "selenium_timeout": 30,
-        "skip_shops": "",
-        "phone_tail_number": "",
-        "mobile_cookie": "",
-        "users": {}
-    }
-    ```
-
-    * `device`: 如果是ios设备就填写ios，安卓留空
-      
-    * `baidu_app_id`: 需要在[百度智能云](https://cloud.baidu.com/) 注册个账号，搜索文字识别项目，创建应用后的`app_id`
-      
-    * `baidu_api_key`: 需要在[百度智能云](https://cloud.baidu.com/) 注册个账号，搜索文字识别项目，创建应用后的`api_key`
-      
-    * `baidu_secret_key`: 需要在[百度智能云](https://cloud.baidu.com/) 注册个账号，搜索文字识别项目，创建应用后的`secret_key`
-      
-    * `baidu_range`: 需要截取的投屏区域的验证码左上角和右下角坐标，顺序依次是 [左x,左y,右x,右y]
-     
-    * `baidu_delay_time`: 百度OCR识别的延迟时间，如果没识别到就几秒后再次尝试，默认为5
-      
-    * `browserType`: 浏览器类型
+        * 利用[tasker软件](https://wwa.lanzoui.com/iLeAYps1x1i) 监听，同上
     
-    * `headless`: 无头模式，建议默认设置
-    
-    * `binary`: 可执行路径，如果驱动没有找到浏览器的话需要你手动配置
-    
-    * `cjy_validation`: 是否开启超级鹰验证图形验证码
-    
-    * `cjy_username`: 超级鹰账号，仅在 cjy_validation 为 true 时需要设置
-    
-    * `cjy_password`: 超级鹰密码，仅在 cjy_validation 为 true 时需要设置
-    
-    * `cjy_soft_id`: 超级鹰软件ID，仅在 cjy_validation 为 true 时需要设置
+        * 使用方法：下载以上任一软件，导入相应的配置，并修改自己的IP为`main.py`程序监听的IP即可
 
-    * `cjy_kind`: 超级鹰验证码类型，仅在 cjy_validation 为 true 时需要设置，且该项目指定为 `9101`
+        * 关于 `tasker` 和 `macrodroid` 配置均在 [extra](https://github.com/yqchilde/JDMemberCloseAccount/tree/main/extra) 目录下
 
-    * `tj_validation`: 是否开启图鉴验证图形验证码
+    2. ios端：
+
+        1. 越狱机（来自[@curtinlv](https://github.com/curtinlv)
+           大佬的越狱监听短信方法，[#61](https://github.com/yqchilde/JDMemberCloseAccount/pull/61) ）
+
+            * 像安卓端一样传验证码（基本逻辑：iOS设备通过访问短信数据库，监听最新的jd验证码并传到 `jd_wstool`）
+
+                1. 下载 [getiOSMessages.py](https://github.com/yqchilde/JDMemberCloseAccount/blob/main/extra/iOSPlus/getiOSMessages.py)
+              传到手机上（测试Pythonista 3可以，其他软件自行研究）
+
+                2. 填写`jd_wstool` 监听地址ip
+
+                   如：监听地址1： http://192.168.0.101:5201 ，填在脚本开头 ipaddr= '192.168.0.101'
+
+                3. 运行脚本
+
+        2. 非越狱机 （任选以下一种类型）
+
+           > 首先感谢tg群的朋友[@millerchen](https://github.com/bluewatercg)
+           提供的思路，具体实现方案是电脑屏幕留出一个区域用来显示手机投屏的地方（如果你电脑是Mac，无需投屏，只需要打开IMessage，并保持短信同步即可，然后OCR识别IMessage），然后打开短信列表，然后找个截图工具记一下当前需要识别的的`左上角`和`右下角`坐标(最好截取那一整条短信的坐标，当然截取范围越小，识别越快)，然后通过ocr工具识别数字验证码
+
+           > **注意：** OCR只是处理识别短信验证码并填入，不要误解为图形验证码也可以解决。如果定位不准，看一下项目目录生成的`ios_code_pic.png`
+           图片位置在当前屏幕的哪个位置，[测试识别效果gif点我查看](https://github.com/yqchilde/JDMemberCloseAccount#screenshots) , 此外，坐标和电脑分辨率有关，如果分辨是是1080P，那么qq截图识别的坐标就是刚好一比一的，比我的是4k显示器，是以百分之200显示的，那所有坐标就要乘以2了
+
+           百度ocr (
+           之前用过的用户还是免费500次/天的额度，新用户调整为1000次/月的额度，调整详情参考[这里](https://ai.baidu.com/support/news?action=detail&id=2390))
+
+                * 需要在`config.yaml`中配置如下参数：
+
+                * `sms_captcha.is_ocr`设置为`true`
+
+                * `sms_captcha.is_ocr.type`设置为`baidu`
+
+                * `sms_captcha.is_ocr.baidu_app_id`补充完整
+
+                * `sms_captcha.is_ocr.baidu_api_key`补充完整
+
+                * `sms_captcha.is_ocr.baidu_secret_key`补充完整
+
+           阿里云ocr (
+           用户新购0元500次，后续500次/0.01元，开通地址[阿里云市场](https://market.aliyun.com/products/57124001/cmapi028554.html?spm=5176.2020520132.101.2.608172181RzlnC#sku=yuncode2255400000))
+
+                * 同上，需要在`config.yaml`中配置如下参数：
+
+                * `sms_captcha.is_ocr`设置为`true`
+
+                * `sms_captcha.is_ocr.type`设置为`aliyun`
+
+                * `sms_captcha.is_ocr.aliyun_appcode`补充完整
+
+           easyocr (免费，本地识别)
+
+                * 同上，需要在`config.yaml`中配置如下参数：
+
+                * `sms_captcha.is_ocr`设置为`true`
+
+                * `sms_captcha.is_ocr.type`设置为`easyocr`
+
+                * 使用时注意框选识别的范围只显示6位数字验证码(现支持一整条完整短信的区域，当然范围越大识别速度也会相应增加，区域扩大是为了优化某些用户短信验证码6位数字每次位置不一致问题)（毕竟免费开源，识别条件有点苛刻）
+
+3. 第二关：图形验证码（任选以下一种类型，默认采用本地识别）
+
+    1. 本地识别（再也不用花钱了👍）
+       
+        * 来自[@AntonVanke](https://github.com/AntonVanke)
+       大佬提供的 [JDCaptcha](https://github.com/AntonVanke/JDCaptcha) 项目(已集成)
+       ，[测试图在最后一张](https://github.com/yqchilde/JDMemberCloseAccount#screenshots) 
+          
+        * [@dd178](https://github.com/dd178) 使用 [yolov4](https://github.com/AlexeyAB/darknet) 训练的权重
+
+    2. 收费的打码平台
+
+        * 图形验证码用 [超级鹰打码](https://www.chaojiying.com/) ，费用是1块=1000积分，一次扣15积分
+
+        * 图形验证码用 [图鉴打码](http://www.ttshitu.com/) ，费用是1块=1积分，一次扣0.01积分
+
+## 如何使用本项目
+
+### 1. 下载项目以及配置浏览器驱动
+
+**注意：** 以下关于`python3`， `pip3` 命令只代表`python3.x`环境，故如果电脑`python`环境已是3.x，可直接用`python`、`pip`代替
+
+1. 克隆到本地或下载项目压缩包到本地
+
+   ```shell
+   git clone https://github.com/yqchilde/JDMemberCloseAccount.git
+   ```
+
+2. 在项目根目录下打开终端执行以下命令，安装所需要的包
+
+   ```shell
+   pip3 install -r requirements.txt
+   ```
+
+   如果因没有代理拉不下包，请使用国内阿里云代理，执行如下命令：
+
+   ```shell
+   pip3 install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+   ```
+
+3. 下载对应的浏览器驱动
    
-    * `tj_username`: 图鉴账号，仅在 tj_validation 为 true 时需要设置
+    `chrome`请访问`chrome://version/`查看浏览器的版本，然后去 [chromedriver](http://chromedriver.storage.googleapis.com/index.html)
+      下载对应的版本/系统驱动（只需要保证版本号前三段一致即可，比如`91.0.4472.77`只需要保证`91.0.4472.x`就行），下载后解压，将其可执行文件（mac为`chromedriver`
+      ，win为`chromedriver.exe`放在项目的`drivers`目录下即可）
    
-    * `tj_password`: 图鉴密码，仅在 tj_validation 为 true 时需要设置
-   
-    * `tj_type_id`: 超级鹰验证码类型，仅在 tj_validation 为 true 时需要设置，且该项目指定为 `19`
-    
-    * `ws_conn_url`: websocket链接地址，不用动
-      
-    * `ws_timeout`: websocket接收验证码时间超时时间，超时会跳过当前店铺，进行下一个店铺，默认为60秒
-   
-    * `selenium_timeout`: selenium操作超时时间，超过会跳过当前店铺，进行下一个店铺，默认为30秒
-   
-    * `skip_shops`: 需要跳过的店铺，需要填写卡包中的完整店铺名称，为了效率没做模糊匹配，多个店铺用逗号隔开
-   
-    * `phone_tail_number`: 手机后4位尾号，若填写将会校验店铺尾号是否是规定的，不符合就跳过
-    
-    * `mobile_cookie`: 手机端cookie，是pt_key开头的那个
-    
-    * `users`: web端cookie，通过add_cookie.py添加
+### 2. 补充配置文件
 
+* `config.yaml`文件
 
-5.  添加`cookie`
+```yaml
+# 手机端cookie，是pt_key=xxx;pt_pin=xxx;
+cookie: ""
+debug: false
 
-    * web端cookie：请在项目目录下执行`python3 add_cookie.py`， 在打开的浏览器界面登录你的京东，此时你可以看到`config.json`已经有了你的用户信息（**请不要随意泄露你的cookie**）
-      
-    * 手机端cookie：在 `config.json` 中写入 `mobile_cookie` 项，注意是pt_key开头的那个（**请不要随意泄露你的cookie**）
+# selenium 相关
+# selenium.browserType: 浏览器类型
+# selenium.headless: 无头模式，建议默认设置
+# selenium.binary: 可执行路径，如果驱动没有找到浏览器的话需要你手动配置
+# selenium.selenium_timeout: selenium操作超时时间，超过会跳过当前店铺，进行下一个店铺，默认为30秒
+selenium:
+  browserType: "Chrome"
+  headless: false
+  binary: ""
+  selenium_timeout: 30
 
-6.  执行主程序
+# shop 店铺设置相关
+# shop.skip_shops: 需要跳过的店铺，需要填写卡包中的完整店铺名称，为了效率没做模糊匹配，多个店铺用逗号隔开
+# shop.phone_tail_number: 手机后4位尾号，若填写将会校验店铺尾号是否是规定的，不符合就跳过
+# shop.member_close_max_number: 设置本次运行注销的最大店铺数，默认为0，代表不限制
+shop:
+  skip_shops: ""
+  phone_tail_number: ""
+  member_close_max_number: 0
 
-    在项目目录下执行`python3 main.py`，等待执行完毕即可
+# sms_captcha 短信验证码相关
+# sms_captcha.is_ocr: 是否开启OCR模式，IOS设备必须开启，安卓非必须
+# sms_captcha.jd_wstool: 是否调用jd_wstool工具监听验证码，默认为开启，如果不想开启，设置为false会调用内置websocket监听
+# sms_captcha.ws_conn_url: websocket链接地址，不用动
+# sms_captcha.ws_timeout: websocket接收验证码时间超时时间，超时会跳过当前店铺，进行下一个店铺，默认为60秒
+# sms_captcha.ocr.type: ocr的类型，可选：baidu、aliyun、easyocr
+# sms_captcha.ocr.ocr_range: 需要截取的投屏区域的验证码左上角和右下角坐标，顺序依次是 [左x,左y,右x,右y]，如[1,2,3,4]
+# sms_captcha.ocr.ocr_delay_time: OCR识别的延迟时间，如果没识别到就几秒后再次尝试，默认为5
+# sms_captcha.ocr.baidu_app_id: 需要在[百度智能云](https://cloud.baidu.com/) 注册个账号，搜索文字识别项目，创建应用后的`app_id`
+# sms_captcha.ocr.baidu_api_key: 需要在[百度智能云](https://cloud.baidu.com/) 注册个账号，搜索文字识别项目，创建应用后的`api_key`
+# sms_captcha.ocr.baidu_secret_key: 需要在[百度智能云](https://cloud.baidu.com/) 注册个账号，搜索文字识别项目，创建应用后的`secret_key`
+# sms_captcha.ocr.aliyun_appcode: 需要在[阿里云市场](https://market.aliyun.com/products/57124001/cmapi028554.html?spm=5176.2020520132.101.2.608172181RzlnC#sku=yuncode2255400000) 购买后的`AppCode`
+sms_captcha:
+  is_ocr: false
+  jd_wstool: true
+  ws_conn_url: "ws://localhost:5201/subscribe"
+  ws_timeout: 60
+  ocr:
+    type: ""
+    ocr_range: [ ]
+    ocr_delay_time: 10
+    baidu_app_id: ""
+    baidu_api_key: ""
+    baidu_secret_key: ""
+    aliyun_appcode: ""
 
-## websocket服务端运行(以下两种方法任一都行，图省事就用2)
+# image_captcha 图形验证码相关
+# image_captcha.type: 图形验证码类型，可选：local、cjy、tj、yolov4
+# image_captcha.cjy_username: 超级鹰账号，仅在 image_captcha.type 为 cjy 时需要设置
+# image_captcha.cjy_password: 超级鹰密码，仅在 image_captcha.type 为 cjy 时需要设置
+# image_captcha.cjy_soft_id: 超级鹰软件ID，仅在 image_captcha.type 为 cjy 时需要设置
+# image_captcha.cjy_kind: 超级鹰验证码类型，仅在 image_captcha.type 为 cjy 时需要设置，且该项目指定为 9101
+# image_captcha.tj_username: 图鉴账号，仅在 image_captcha.type 为 tj 时需要设置
+# image_captcha.tj_password: 图鉴密码，仅在 image_captcha.type 为 tj 时需要设置
+# image_captcha.tj_type_id: 图鉴验证码类型，仅在 image_captcha.type 为 tj 时需要设置，且该项目指定为 19
+# yolov4_weights: yolov4权重文件路径，仅在 image_captcha.type 为 yolov4 时需要设置
+# yolov4_cfg: yolov4配置文件路径，仅在 image_captcha.type 为 yolov4 时需要设置
+# yolov4_net_size: yolov4网络size，仅在 image_captcha.type 为 yolov4 时需要设置
+image_captcha:
+  type: "yolov4"
+  cjy_username: ""
+  cjy_password: ""
+  cjy_soft_id: ""
+  cjy_kind: 9101
+  tj_username: ""
+  tj_password: ""
+  tj_type_id: 19
+  yolov4_weights: "yolov4/yolov4-tiny-custom.weights"
+  yolov4_cfg: "yolov4/yolov4-tiny-custom.cfg"
+  yolov4_net_size: 512
 
-1. 手动运行 `go run ./cmd/jd_wstool`
-
-2. 下载 [jd_wstool](https://github.com/yqchilde/JDMemberCloseAccount/releases), 选择自己的电脑系统对应的压缩包，解压运行
-
-![测试图](https://github.com/yqchilde/JDMemberCloseAccount/blob/main/screenshots/test_img3.png)
-
-## 手机端短信如何传递给电脑端
-
-1. 安卓端，我是用了tasker监听，总是随便一个可以监听到的，然后请求接口就行，接口如下
-
-2. 安卓端，用 `Macrodroid监听`，原理一样
-
-   * 关于 `tasker` 和 `macrodroid` 配置均在 [extra](https://github.com/yqchilde/JDMemberCloseAccount/tree/main/extra) 目录下
-
-3. ios端，找一个投屏软件，群友教程提供的是 [airplayer](https://pro.itools.cn/airplayer), 然后记录验证码区域坐标，通过百度ocr识别并填入
-
-```bash
-http://同局域网IP:5201/publish?smsCode=短信验证码
-
-例如：
-http://192.168.2.100:5201/publish?smsCode=12345
-
-同局域网IP会在运行 `./jd_wstool 或 jd_wstool.exe` 时提示出来，例如：
-listening on http://192.168.2.100:5201
+# user-agent 用户代理，可自行配置
+user-agent:
+  - Mozilla/5.0 (Linux; Android 11; M2007J3SC) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.210 Mobile Safari/537.36
+  - okhttp/3.12.1;jdmall;android;version/10.0.2;build/88569;screen/1080x2266;os/11;network/wifi;
 ```
+
+### 3. 添加`cookie` （二选一）
+
+**自动添加：** 使用`add_cookie.py`可以获取手机端`Cookie` 并自动配置到 `config.yaml` 文件中
+
+**手动添加：** 在 `config.yaml` 中第二行写入 `cookie` 项，注意是pt_key=123456;pt_pin=jd_987654的那个（**请不要随意泄露你的cookie**）
+
+### 4. 根据手机终端类型补充配置 （其实还是第2步，这里详细再讲下）
+
+大体说一下，这块是关于手机端短信验证码的配置
+
+1. 选择转发验证码方式
+   
+    **安卓：** 使用tasker或macrodroid
+   
+    **IOS越狱：** 使用短信转发功能
+
+    **IOS非越狱：** 使用OCR
+
+2. 软件配置
+    
+    **[tasker：](https://wwa.lanzoui.com/iLeAYps1x1i)** 参照 [tasker_1.jpg](https://raw.githubusercontent.com/yqchilde/JDMemberCloseAccount/main/extra/tasker/tasker_1.jpg) 和 [tasker_2.jpg](https://raw.githubusercontent.com/yqchilde/JDMemberCloseAccount/main/extra/tasker/tasker_2.jpg) 进行设置，或者直接导入 [配置文件](https://raw.githubusercontent.com/yqchilde/JDMemberCloseAccount/main/extra/tasker/%E7%9B%91%E5%90%AC%E4%BA%AC%E4%B8%9C%E9%80%80%E4%BC%9A%E9%AA%8C%E8%AF%81%E7%A0%81.prf.xml)
+   
+    **[macrodroid：](https://wwa.lanzoui.com/iSwocpqow3a)** 参照 [macrodroid.jpg](https://raw.githubusercontent.com/yqchilde/JDMemberCloseAccount/main/extra/macrodroid/macrodroid.jpg) 进行设置，或者直接导入 [配置文件](https://raw.githubusercontent.com/yqchilde/JDMemberCloseAccount/main/extra/macrodroid/%E7%9B%91%E5%90%AC%E4%BA%AC%E4%B8%9C%E9%80%80%E4%BC%9A%E9%AA%8C%E8%AF%81%E7%A0%81.macro)
+    
+    **OCR：** 
+   
+    1. 修改`config.yaml`文件38行为`is_ocr: true`
+    2. 按prtsc键（F12旁边）截图或其他软件截全屏，打开Windows附件-画图，粘贴进去，切换铅笔工具，就可以在左下角查看坐标，坐标格式请查看[图片](https://raw.githubusercontent.com/yqchilde/JDMemberCloseAccount/main/screenshots/test_img3.png) ，将坐标填入`ocr_range`
+    3. baidu、aliyun、easyocr三选一填入43行`type`
+    4. `type`为baidu需要填写46-48行，为aliyun则填写49行，easyocr不用填，具体怎么填看注释
+
+
+### 5. 启动 [jd_wstool](https://github.com/yqchilde/JDMemberCloseAccount/releases) 工具（使用OCR的不用开）
+
+这个步骤只需要安卓端手机用了tasker 或 macrodroid 或其他自动化工具的开启
+
+什么意思呢？就是配置文件中你的 `is_ocr`为false的，就要开启，否则不用开启
+
+### 6. 启动主程序
+
+在项目目录下执行`python3 main.py`，等待执行完毕即可
+
+## 关于 `jd_wstool` 工具
+
+该工具是用来监听手机端发送HTTP请求传递验证码的，实现原理是websocket
+
+如果不想用`jd_wstool`，配置文件`sms_captcha`下面的`jd_wstool`设置为false，就会走内置websocket，默认为true
+
+1. 我编译好了各种操作系统的包，直接下载 [jd_wstool](https://github.com/yqchilde/JDMemberCloseAccount/releases), 选择自己的电脑系统对应的压缩包，解压运行
+2. 自行编译，代码在 [jd_wstool](https://github.com/yqchilde/JDMemberCloseAccount/tree/main/jd_wstool) 目录下
 
 ## 常见问题
 
 1. Tasker | Macrodroid 监听不到短信怎么办？
 
-   * vivo手机和iqoo手机的验证码保护取消： 短信-设置-隐私保护-验证码安全保护关闭
-   
-   * 小米手机：权限-允许读取短信 & 允许读取通知类短信
-   
-   * 华为手机：短信-右上角三个点-设置-验证码安全保护关闭
+    * vivo手机和iqoo手机的验证码保护取消： 短信-设置-隐私保护-验证码安全保护关闭
+
+    * 小米手机：权限-允许读取短信 & 允许读取通知类短信
+
+    * 华为手机：短信-右上角三个点-设置-验证码安全保护关闭
+
+    * 权限没问题的，看下tasker的日志或macrodroid的日志，有错误会显示
+
+2. 百度OCR报错 `{'error_code': 18, 'error_msg': 'Open api qps request limit reached'}`
+
+    * 答案在这里 https://github.com/yqchilde/JDMemberCloseAccount/issues/48
+
+3. 百度OCR报错 `{'error_code': 14, 'error_msg': 'IAM Certification failed'}`
+
+    * 说明从百度复制到配置文件的`baidu_app_id`, `baidu_api_key`, `baidu_secret_key` 不正确
+    
+4. 电脑端没有监听到验证码，显示等待websocket推送短信验证码超时
+
+    * 先用手机浏览器访问监听地址，确保能访问通
+
+    * 如果访问通说明IP没问题，请查看手机端MacroDroid或Tasker里main的日志，确保有监听到
+
+## 测试
+
+1. websocket转发验证码
+
+    1. 电脑运行`python3 ./tests/test_websocket.py`和 `./jd_wstool` 工具，windows记得 `.exe` ，此时模拟启动main程序和监听验证码程序
+    2. 手机访问 `http://你的IP:5201/publish?smsCode=1234522`，之后查看电脑上`jd_wstool` 和 `test_main.py` 的控制台输出信息
+
+2. 百度OCR
+
+    1. 运行`python3 ./captcha/baidu_ocr.py`测试
+
+3. Easy OCR
+
+    1. 运行`python3 ./captcha/easy_ocr.py`测试
+    
+4. `main.py`执行报错
+
+    1. 在`config.yaml`里设置`debug: true`再次执行可以看到具体报错，如解决不了请反馈tg群
 
 ## ScreenShots
 
-![测试图1](https://github.com/yqchilde/JDMemberCloseAccount/blob/main/screenshots/test_img1.gif)
+<div align=center>
+<img src="https://github.com/yqchilde/JDMemberCloseAccount/blob/main/screenshots/test_img1.gif" width="600" />
+</div>
 
-![测试图2](https://github.com/yqchilde/JDMemberCloseAccount/blob/main/screenshots/test_img2.gif)
+<div align=center>
+<img src="https://github.com/yqchilde/JDMemberCloseAccount/blob/main/screenshots/test_img2.gif" width="600" />
+</div>
 
-![测试图3](https://github.com/yqchilde/JDMemberCloseAccount/blob/main/screenshots/test_img3.gif)
+<div align=center>
+<img src="https://github.com/yqchilde/JDMemberCloseAccount/blob/main/screenshots/test_img3.png" width="600" />
+</div>
 
-![测试图4](https://github.com/yqchilde/JDMemberCloseAccount/blob/main/screenshots/test_img4.png)
+<div align=center>
+<img src="https://github.com/yqchilde/JDMemberCloseAccount/blob/main/screenshots/test_img4.png" width="800" />
+</div>
+
+<div align=center>
+<img src="https://github.com/yqchilde/JDMemberCloseAccount/blob/main/extra/iOSPlus/test.png" width="600" />
+</div>
+
+## TG讨论群
+
+[JD退会频道 https://t.me/JDCloseAccount](https://t.me/JDCloseAccount)
+
+[JD退会讨论群 https://t.me/jdMemberCloseAccount](https://t.me/jdMemberCloseAccount)
 
 # Thanks
 
